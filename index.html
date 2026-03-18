@@ -1,0 +1,450 @@
+<!DOCTYPE html>
+<html lang="en" class="dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>SUPERNET</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://unpkg.com/lucide@latest"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@500;700;900&family=Rajdhani:wght@500;700&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --cyan: #00d4ff;
+      --purple: #7b2ff7;
+      --bg: #0a0b14;
+      --panel: rgba(16,20,40,.76);
+      --card: rgba(16,20,40,.58);
+      --text: #fff;
+      --muted: #9ca3af;
+      --border: rgba(0,212,255,.18);
+    }
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: 'Space Mono', monospace;
+      font-size: 15px;
+      min-height: 100vh;
+    }
+    .font-orbitron { font-family: 'Orbitron', sans-serif; }
+    .font-rajdhani { font-family: 'Rajdhani', sans-serif; }
+    .glass { background: var(--card); backdrop-filter: blur(14px); border: 1px solid var(--border); }
+    .glass-strong { background: var(--panel); backdrop-filter: blur(18px); border: 1px solid var(--border); }
+    .gradient-text {
+      background: linear-gradient(135deg, var(--cyan), var(--purple));
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+    .domain::after { content: '.supra'; opacity: .7; }
+    .nav-btn.active { background: rgba(0,212,255,.12); color: var(--cyan); border-left: 3px solid var(--cyan); }
+    .fab { position: fixed; right: 18px; bottom: 92px; z-index: 40; }
+    .ai-chip { border: 1px solid var(--border); background: rgba(0,212,255,.08); }
+    .hidden-view { display: none; }
+    .modal.hidden { display: none; }
+    .grid-bg {
+      position: fixed; inset: 0; opacity: .35; pointer-events: none;
+      background-image: linear-gradient(var(--border) 1px, transparent 1px), linear-gradient(90deg, var(--border) 1px, transparent 1px);
+      background-size: 48px 48px;
+    }
+    @media (max-width: 768px) { .fab { bottom: 146px; right: 10px; } }
+  </style>
+</head>
+<body class="overflow-x-hidden">
+  <div class="grid-bg"></div>
+
+  <div id="authModal" class="fixed inset-0 z-50 flex items-center justify-center bg-black/85 p-4">
+    <div class="glass-strong w-full max-w-xl rounded-3xl p-6 shadow-2xl">
+      <div class="text-center mb-8">
+        <div class="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-2xl bg-gradient-to-br from-cyan-400 to-blue-600">
+          <i data-lucide="network" class="h-8 w-8 text-white"></i>
+        </div>
+        <h1 class="font-orbitron text-3xl font-bold gradient-text">Connect to SUPERNET</h1>
+        <p class="mt-2 text-sm text-gray-400">We'll detect your <span class="text-cyan-400">.supra</span> identity from your Starkey wallet.</p>
+      </div>
+      <button onclick="connectWallet()" class="w-full rounded-2xl bg-gradient-to-r from-cyan-500 to-blue-600 px-5 py-4 font-rajdhani text-xl font-bold shadow-lg shadow-cyan-500/20">
+        Connect Starkey Wallet
+      </button>
+      <div class="mt-5 grid gap-3 md:grid-cols-2">
+        <div class="glass rounded-2xl p-4">
+          <div class="text-xs uppercase text-gray-500">Onboarding</div>
+          <div class="mt-2 font-orbitron text-xl text-cyan-400">SSIN + Starkey</div>
+          <div class="mt-2 text-sm text-gray-400">Sign up text now reflects the supported Supra wallet flow.</div>
+        </div>
+        <div class="glass rounded-2xl p-4">
+          <div class="text-xs uppercase text-gray-500">Reward Pool</div>
+          <div class="mt-2 font-orbitron text-xl text-green-400">SSIN + Space Fees</div>
+          <div class="mt-2 text-sm text-gray-400">Both onboarding and Space creation fees contribute to the community pool.</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div id="app" class="relative z-10 flex min-h-screen opacity-40 pointer-events-none transition-opacity duration-300">
+    <aside class="hidden w-72 shrink-0 flex-col border-r border-cyan-500/20 glass-strong lg:flex">
+      <div class="border-b border-cyan-500/20 p-6">
+        <div class="flex items-center gap-3">
+          <div class="flex h-11 w-11 items-center justify-center rounded-xl bg-gradient-to-br from-cyan-400 to-blue-600">
+            <i data-lucide="network" class="h-6 w-6 text-white"></i>
+          </div>
+          <div class="font-orbitron text-xl font-bold gradient-text">SUPERNET</div>
+        </div>
+      </div>
+      <nav class="flex-1 space-y-1 p-4">
+        <button id="nav-feed" onclick="switchView('feed')" class="nav-btn active flex w-full items-center gap-3 rounded-xl px-4 py-3 text-left text-gray-300"><i data-lucide="home" class="h-5 w-5"></i>Feed</button>
+        <button id="nav-explore" onclick="switchView('explore')" class="nav-btn flex w-full items-center gap-3 rounded-xl px-4 py-3 text-left text-gray-300"><i data-lucide="layout-grid" class="h-5 w-5"></i>SuperTinyApp</button>
+        <button id="nav-spaces" onclick="switchView('spaces')" class="nav-btn flex w-full items-center gap-3 rounded-xl px-4 py-3 text-left text-gray-300"><i data-lucide="broadcast" class="h-5 w-5"></i>Spaces</button>
+        <button id="nav-analytics" onclick="switchView('analytics')" class="nav-btn flex w-full items-center gap-3 rounded-xl px-4 py-3 text-left text-gray-300"><i data-lucide="bar-chart-2" class="h-5 w-5"></i>Analytics</button>
+        <button id="nav-profile" onclick="switchView('profile')" class="nav-btn flex w-full items-center gap-3 rounded-xl px-4 py-3 text-left text-gray-300"><i data-lucide="user" class="h-5 w-5"></i>Profile</button>
+      </nav>
+      <div class="border-t border-cyan-500/20 p-4">
+        <div class="glass rounded-2xl p-4">
+          <div class="flex items-center justify-between text-xs text-gray-500"><span>Community Pool</span><span id="poolValue" class="text-green-400">5800 SUPRA</span></div>
+          <div class="mt-3 text-sm text-gray-400">Includes SSIN onboarding fees and every Space creation fee.</div>
+        </div>
+      </div>
+    </aside>
+
+    <main class="flex-1 px-4 py-4 md:px-6">
+      <header class="glass sticky top-4 z-20 mb-6 flex items-center justify-between rounded-2xl px-4 py-3">
+        <div>
+          <div class="font-orbitron text-xl font-bold gradient-text">Supernet Social</div>
+          <div class="text-xs text-gray-500">Computer-style typography with moderate sizing</div>
+        </div>
+        <div class="flex items-center gap-3 text-sm">
+          <div class="glass rounded-xl px-3 py-2"><span class="text-gray-500">Pool</span> <span id="poolValueTop" class="text-green-400">5800 SUPRA</span></div>
+          <div class="glass rounded-xl px-3 py-2"><span class="text-gray-500">User</span> <span class="domain text-cyan-400" id="headerDomain">guest</span></div>
+        </div>
+      </header>
+
+      <section id="view-feed" class="mx-auto max-w-4xl space-y-5">
+        <div class="grid gap-4 md:grid-cols-2">
+          <div class="glass rounded-3xl p-5">
+            <div class="mb-3 inline-flex items-center gap-2 rounded-full ai-chip px-3 py-1 text-xs text-cyan-400"><i data-lucide="layout-grid" class="h-3 w-3"></i>SuperTinyApp</div>
+            <h2 class="font-orbitron text-xl font-bold">Mini apps for Supra projects</h2>
+            <p class="mt-3 text-sm text-gray-400">Projects on Supra can showcase products, campaigns, and onboarding experiences directly to Supernet users.</p>
+          </div>
+          <div class="glass rounded-3xl p-5">
+            <div class="mb-3 inline-flex items-center gap-2 rounded-full ai-chip px-3 py-1 text-xs text-purple-300"><i data-lucide="broadcast" class="h-3 w-3"></i>Spaces</div>
+            <h2 class="font-orbitron text-xl font-bold">Channels are now Spaces</h2>
+            <p class="mt-3 text-sm text-gray-400">Newbies cannot create a Space. Verified Supra projects can, and each creation fee goes into the community reward pool.</p>
+          </div>
+        </div>
+        <div id="postsList" class="space-y-4"></div>
+      </section>
+
+      <section id="view-explore" class="hidden-view mx-auto max-w-5xl space-y-5">
+        <div class="flex items-center justify-between gap-4">
+          <div>
+            <h2 class="font-orbitron text-3xl font-bold gradient-text">SuperTinyApp Showcase</h2>
+            <p class="mt-2 text-sm text-gray-400">Mini apps where projects on Supra can present their product to Supernet users.</p>
+          </div>
+          <button class="rounded-2xl bg-gradient-to-r from-cyan-500 to-blue-600 px-4 py-3 font-rajdhani text-lg font-bold">Launch Flow</button>
+        </div>
+        <div id="miniAppsList" class="grid gap-4 md:grid-cols-2 xl:grid-cols-3"></div>
+      </section>
+
+      <section id="view-spaces" class="hidden-view mx-auto max-w-5xl space-y-5">
+        <div class="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+          <div>
+            <h2 class="font-orbitron text-3xl font-bold gradient-text">Spaces</h2>
+            <p class="mt-2 text-sm text-gray-400">Unique name and project picture are required. Creation fees are paid in SUPRA and added to the reward pool.</p>
+          </div>
+          <button onclick="openSpaceModal()" class="rounded-2xl bg-gradient-to-r from-cyan-500 to-blue-600 px-4 py-3 font-rajdhani text-lg font-bold">Create Space</button>
+        </div>
+        <div class="grid gap-4 md:grid-cols-3">
+          <div class="glass rounded-2xl p-5"><div class="text-xs text-gray-500">Eligibility</div><div class="mt-2 font-orbitron text-lg text-cyan-400">Member+</div><div class="mt-2 text-sm text-gray-400">Newbies are blocked unless this is a verified Supra project.</div></div>
+          <div class="glass rounded-2xl p-5"><div class="text-xs text-gray-500">Creation Fee</div><div class="mt-2 font-orbitron text-lg text-purple-300">50 SUPRA</div><div class="mt-2 text-sm text-gray-400">Added directly to the community pool.</div></div>
+          <div class="glass rounded-2xl p-5"><div class="text-xs text-gray-500">Required</div><div class="mt-2 font-orbitron text-lg text-green-400">Unique Name + Picture</div><div class="mt-2 text-sm text-gray-400">Each Space needs a distinct identity before publish.</div></div>
+        </div>
+        <div id="spaceGate" class="glass rounded-2xl p-5 text-sm text-gray-300">Current rank: Newbie. Raise reputation or use the verified project exception for Space creation.</div>
+        <div id="spacesList" class="grid gap-4 md:grid-cols-2 xl:grid-cols-3"></div>
+      </section>
+
+      <section id="view-analytics" class="hidden-view mx-auto max-w-4xl space-y-5">
+        <h2 class="font-orbitron text-3xl font-bold gradient-text">Analytics</h2>
+        <div class="grid gap-4 md:grid-cols-3">
+          <div class="glass rounded-2xl p-5"><div class="text-xs text-gray-500">Engagement</div><div class="mt-2 font-orbitron text-2xl text-cyan-400">750</div></div>
+          <div class="glass rounded-2xl p-5"><div class="text-xs text-gray-500">Content Quality</div><div class="mt-2 font-orbitron text-2xl text-green-400">92%</div></div>
+          <div class="glass rounded-2xl p-5"><div class="text-xs text-gray-500">Community Pool</div><div id="analyticsPool" class="mt-2 font-orbitron text-2xl text-purple-300">5800 SUPRA</div></div>
+        </div>
+      </section>
+
+      <section id="view-profile" class="hidden-view mx-auto max-w-4xl space-y-5">
+        <div class="glass rounded-3xl p-6">
+          <div class="flex flex-col gap-5 md:flex-row md:items-center">
+            <div class="flex h-24 w-24 items-center justify-center rounded-2xl bg-gradient-to-br from-cyan-400 to-blue-600 text-3xl font-bold" id="profileInitial">G</div>
+            <div>
+              <div class="flex items-center gap-3"><div class="domain font-orbitron text-2xl text-cyan-400" id="profileDomain">guest</div><span id="repBadge" class="rounded-full bg-gray-600 px-3 py-1 text-xs font-bold">Newbie</span></div>
+              <div class="mt-2 text-sm text-gray-400">Spaces unlock at Member level, unless you are launching as a verified Supra project.</div>
+            </div>
+          </div>
+        </div>
+      </section>
+    </main>
+  </div>
+
+  <nav class="fixed bottom-0 left-0 right-0 z-30 flex justify-around border-t border-cyan-500/20 glass-strong p-3 lg:hidden">
+    <button onclick="switchView('feed')" class="text-xs text-cyan-400">Feed</button>
+    <button onclick="switchView('explore')" class="text-xs text-gray-300">MiniApp</button>
+    <button onclick="switchView('spaces')" class="text-xs text-gray-300">Spaces</button>
+    <button onclick="switchView('profile')" class="text-xs text-gray-300">Profile</button>
+  </nav>
+
+  <div class="fab">
+    <button onclick="openComposer()" class="flex items-center gap-3 rounded-full bg-gradient-to-r from-cyan-500 to-blue-600 px-5 py-3 shadow-xl shadow-cyan-500/20">
+      <i data-lucide="square-pen" class="h-5 w-5 text-white"></i>
+      <span class="font-rajdhani text-lg font-bold text-white">Create Post</span>
+    </button>
+  </div>
+
+  <div id="composerModal" class="modal hidden fixed inset-0 z-50">
+    <div class="absolute inset-0 bg-black/80" onclick="closeComposer()"></div>
+    <div class="absolute inset-0 flex items-center justify-center p-4">
+      <div class="glass-strong w-full max-w-2xl rounded-3xl p-5">
+        <div class="mb-4 flex items-center justify-between">
+          <div>
+            <h3 class="font-orbitron text-2xl font-bold gradient-text">Create Post</h3>
+            <p class="text-xs text-gray-500">Floating composer replacing the old inline post box.</p>
+          </div>
+          <button onclick="closeComposer()"><i data-lucide="x" class="h-5 w-5 text-gray-400"></i></button>
+        </div>
+        <div id="spamWarning" class="mb-3 hidden rounded-2xl border border-red-500/40 bg-red-500/10 p-3 text-sm text-red-300">This content looks spammy. Tone it down before posting.</div>
+        <textarea id="postInput" oninput="checkPost()" class="min-h-[140px] w-full rounded-2xl border border-cyan-500/20 bg-black/30 p-4 text-gray-200 outline-none" placeholder="What's happening on Supra today?"></textarea>
+        <div class="mt-4 flex items-center justify-between">
+          <div id="postCount" class="text-xs text-gray-500">0/280</div>
+          <div class="flex items-center gap-3">
+            <button onclick="applySuggestion('Launching our SuperTinyApp on Supernet today. Here is what users can do inside it...')" class="rounded-full ai-chip px-3 py-2 text-xs text-cyan-400">Mini App Prompt</button>
+            <button id="postBtn" onclick="createPost()" class="rounded-full bg-gradient-to-r from-cyan-500 to-blue-600 px-5 py-2 font-rajdhani text-lg font-bold">Post</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div id="spaceModal" class="modal hidden fixed inset-0 z-50">
+    <div class="absolute inset-0 bg-black/80" onclick="closeSpaceModal()"></div>
+    <div class="absolute inset-0 flex items-center justify-center p-4">
+      <div class="glass-strong w-full max-w-3xl rounded-3xl p-6">
+        <div class="mb-5 flex items-center justify-between">
+          <div>
+            <h3 class="font-orbitron text-2xl font-bold gradient-text">Create Space</h3>
+            <p class="text-xs text-gray-500">Unique name and project picture are required.</p>
+          </div>
+          <button onclick="closeSpaceModal()"><i data-lucide="x" class="h-5 w-5 text-gray-400"></i></button>
+        </div>
+        <div class="grid gap-5 md:grid-cols-[1.3fr,0.7fr]">
+          <div class="space-y-4">
+            <input id="spaceName" class="w-full rounded-2xl border border-cyan-500/20 bg-black/30 p-4 outline-none" placeholder="Unique Space name">
+            <textarea id="spaceDesc" class="min-h-[120px] w-full rounded-2xl border border-cyan-500/20 bg-black/30 p-4 outline-none" placeholder="Describe the purpose of this Space"></textarea>
+            <input id="spaceImage" type="file" accept="image/*" onchange="previewSpaceImage(event)" class="w-full rounded-2xl border border-cyan-500/20 bg-black/30 p-4">
+            <img id="spacePreview" class="hidden h-44 w-full rounded-2xl object-cover">
+          </div>
+          <div class="space-y-4">
+            <div class="glass rounded-2xl p-4">
+              <div class="text-xs text-gray-500">Space Fee</div>
+              <div class="mt-2 font-orbitron text-2xl text-purple-300">50 SUPRA</div>
+              <div class="mt-2 text-sm text-gray-400">Added directly to the Supernet reward pool.</div>
+            </div>
+            <label class="glass flex gap-3 rounded-2xl p-4 text-sm text-gray-300">
+              <input id="verifiedProject" type="checkbox" class="mt-1 accent-cyan-400">
+              <span>Verified Supra project exception</span>
+            </label>
+            <div id="spaceNotice" class="glass rounded-2xl p-4 text-sm text-gray-300">Newbies cannot create a Space unless they are a verified Supra project.</div>
+            <button onclick="createSpace()" class="w-full rounded-2xl bg-gradient-to-r from-cyan-500 to-blue-600 px-4 py-3 font-rajdhani text-lg font-bold">Create Space</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const state = {
+      user: { domain: 'guest', reputation: 100 },
+      pool: 5800,
+      posts: [
+        { author: 'alice', text: 'SuperTinyApps make Supra product discovery much easier across social.', time: '2m ago' },
+        { author: 'builderlab', text: 'We are preparing a verified project Space with launch updates and support threads.', time: '8m ago' }
+      ],
+      miniApps: [
+        { name: 'SupraQuest', project: 'Quest Labs', desc: 'Quest and reward mini app for Supra users.', tag: 'Growth' },
+        { name: 'Oracle Hub', project: 'SupraOracles', desc: 'Product showcase for live oracle tools and integrations.', tag: 'Infra' },
+        { name: 'VaultSprint', project: 'YieldForge', desc: 'Mini app to explain vault strategies and convert users.', tag: 'DeFi' }
+      ],
+      spaces: [
+        { name: 'Supra Builders', desc: 'Builder updates, support threads, and launches.', members: '4.2K', project: true, image: 'https://placehold.co/600x360/0A0B14/00D4FF?text=Builders' },
+        { name: 'Mini App Launchpad', desc: 'Showcase for newly released SuperTinyApps.', members: '1.6K', project: true, image: 'https://placehold.co/600x360/101428/10B981?text=Launchpad' }
+      ],
+      spaceImage: ''
+    };
+
+    function connectWallet() {
+      state.user.domain = 'alice';
+      document.getElementById('authModal').classList.add('hidden');
+      document.getElementById('app').style.opacity = '1';
+      document.getElementById('app').style.pointerEvents = 'auto';
+      syncUser();
+      renderAll();
+    }
+
+    function syncUser() {
+      document.getElementById('headerDomain').textContent = state.user.domain;
+      document.getElementById('profileDomain').textContent = state.user.domain;
+      document.getElementById('profileInitial').textContent = state.user.domain[0].toUpperCase();
+      const rank = state.user.reputation >= 500 ? 'Member' : 'Newbie';
+      document.getElementById('repBadge').textContent = rank;
+      document.getElementById('spaceGate').textContent = rank === 'Member'
+        ? 'Current rank: Member. Space creation is unlocked for this account.'
+        : 'Current rank: Newbie. Raise reputation or use the verified project exception for Space creation.';
+    }
+
+    function switchView(view) {
+      ['feed', 'explore', 'spaces', 'analytics', 'profile'].forEach((id) => {
+        document.getElementById(`view-${id}`).classList.toggle('hidden-view', id !== view);
+        const nav = document.getElementById(`nav-${id}`);
+        if (nav) nav.classList.toggle('active', id === view);
+      });
+    }
+
+    function renderPool() {
+      const value = `${state.pool} SUPRA`;
+      document.getElementById('poolValue').textContent = value;
+      document.getElementById('poolValueTop').textContent = value;
+      document.getElementById('analyticsPool').textContent = value;
+    }
+
+    function renderPosts() {
+      document.getElementById('postsList').innerHTML = state.posts.map(post => `
+        <article class="glass rounded-3xl p-5">
+          <div class="flex items-center justify-between gap-3">
+            <div class="flex items-center gap-3">
+              <div class="flex h-12 w-12 items-center justify-center rounded-full bg-gradient-to-br from-cyan-400 to-blue-600 font-bold">${post.author[0].toUpperCase()}</div>
+              <div>
+                <div class="domain text-cyan-400">${post.author}</div>
+                <div class="text-xs text-gray-500">${post.time}</div>
+              </div>
+            </div>
+            <div class="rounded-full bg-green-500/10 px-3 py-1 text-xs text-green-400">High Quality</div>
+          </div>
+          <p class="mt-4 text-sm leading-7 text-gray-200">${post.text}</p>
+        </article>
+      `).join('');
+    }
+
+    function renderMiniApps() {
+      document.getElementById('miniAppsList').innerHTML = state.miniApps.map(app => `
+        <article class="glass rounded-3xl p-5">
+          <div class="inline-flex rounded-full ai-chip px-3 py-1 text-xs text-cyan-400">${app.tag}</div>
+          <h3 class="mt-4 font-orbitron text-xl font-bold">${app.name}</h3>
+          <div class="mt-1 text-xs text-gray-500">${app.project}</div>
+          <p class="mt-3 text-sm text-gray-400">${app.desc}</p>
+          <button class="mt-4 text-sm text-cyan-400">Open Mini App</button>
+        </article>
+      `).join('');
+    }
+
+    function renderSpaces() {
+      document.getElementById('spacesList').innerHTML = state.spaces.map(space => `
+        <article class="overflow-hidden rounded-3xl glass">
+          <img src="${space.image}" alt="${space.name}" class="h-44 w-full object-cover">
+          <div class="p-5">
+            <div class="flex items-center justify-between gap-3">
+              <h3 class="font-orbitron text-lg font-bold">${space.name}</h3>
+              <span class="rounded-full ${space.project ? 'bg-cyan-500/10 text-cyan-400' : 'bg-gray-700 text-gray-300'} px-3 py-1 text-xs">${space.project ? 'Project' : 'Community'}</span>
+            </div>
+            <p class="mt-3 text-sm text-gray-400">${space.desc}</p>
+            <div class="mt-4 text-xs text-gray-500">${space.members} members</div>
+          </div>
+        </article>
+      `).join('');
+    }
+
+    function renderAll() { renderPool(); renderPosts(); renderMiniApps(); renderSpaces(); syncUser(); lucide.createIcons(); }
+
+    function openComposer() { document.getElementById('composerModal').classList.remove('hidden'); }
+    function closeComposer() { document.getElementById('composerModal').classList.add('hidden'); }
+
+    function applySuggestion(text) {
+      document.getElementById('postInput').value = text;
+      checkPost();
+    }
+
+    function checkPost() {
+      const text = document.getElementById('postInput').value.trim();
+      const spammy = /(buy now|moon|pump|!!!)/i.test(text);
+      document.getElementById('postCount').textContent = `${text.length}/280`;
+      document.getElementById('spamWarning').classList.toggle('hidden', !spammy);
+      document.getElementById('postBtn').disabled = !text || spammy;
+      document.getElementById('postBtn').classList.toggle('opacity-50', !text || spammy);
+    }
+
+    function createPost() {
+      const text = document.getElementById('postInput').value.trim();
+      if (!text) return;
+      state.posts.unshift({ author: state.user.domain, text, time: 'Just now' });
+      state.user.reputation += 10;
+      document.getElementById('postInput').value = '';
+      closeComposer();
+      renderAll();
+    }
+
+    function openSpaceModal() { document.getElementById('spaceModal').classList.remove('hidden'); }
+    function closeSpaceModal() { document.getElementById('spaceModal').classList.add('hidden'); }
+
+    function previewSpaceImage(event) {
+      const file = event.target.files[0];
+      if (!file) return;
+      const reader = new FileReader();
+      reader.onload = () => {
+        state.spaceImage = reader.result;
+        const preview = document.getElementById('spacePreview');
+        preview.src = state.spaceImage;
+        preview.classList.remove('hidden');
+      };
+      reader.readAsDataURL(file);
+    }
+
+    function createSpace() {
+      const name = document.getElementById('spaceName').value.trim();
+      const desc = document.getElementById('spaceDesc').value.trim();
+      const verified = document.getElementById('verifiedProject').checked;
+      const unique = !state.spaces.some(space => space.name.toLowerCase() === name.toLowerCase());
+      const eligible = state.user.reputation >= 500 || verified;
+
+      if (!eligible) {
+        document.getElementById('spaceNotice').textContent = 'Blocked: newbies cannot create a Space unless this is a verified Supra project.';
+        return;
+      }
+      if (!name || !unique) {
+        document.getElementById('spaceNotice').textContent = 'A unique Space name is required.';
+        return;
+      }
+      if (!state.spaceImage) {
+        document.getElementById('spaceNotice').textContent = 'A project picture is required before Space creation.';
+        return;
+      }
+
+      state.spaces.unshift({
+        name,
+        desc: desc || 'New Space on Supernet.',
+        members: verified ? 'Verified project' : 'Fresh community',
+        project: verified,
+        image: state.spaceImage
+      });
+      state.pool += 50;
+      state.user.reputation += 15;
+      document.getElementById('spaceName').value = '';
+      document.getElementById('spaceDesc').value = '';
+      document.getElementById('spaceImage').value = '';
+      document.getElementById('verifiedProject').checked = false;
+      document.getElementById('spacePreview').classList.add('hidden');
+      document.getElementById('spaceNotice').textContent = 'Space created successfully.';
+      state.spaceImage = '';
+      closeSpaceModal();
+      renderAll();
+    }
+
+    renderAll();
+    switchView('feed');
+  </script>
+</body>
+</html>
+
